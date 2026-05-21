@@ -13,7 +13,7 @@ import signal
 
 # ── Configuration ────────────────────────────────────────────────────────────
 REMOTE_HOST   = "10.42.0.222"
-REMOTE_USER   = "dongle-rp1"
+REMOTE_USER   = "admin"
 REMOTE_SCRIPT = "/home/admin/dongle-warrior-bakery/EV_Charger/test_server.py"
 PYTHON_BIN    = "python3"
 # ─────────────────────────────────────────────────────────────────────────────
