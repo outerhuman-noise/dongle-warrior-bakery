@@ -10,9 +10,9 @@ import sys
 import getpass
 
 # ── Configuration ────────────────────────────────────────────────────────────
-REMOTE_HOST    = "192.168.1.100"           # IP or hostname of the target Pi
-REMOTE_USER    = "pi"                      # SSH username
-REMOTE_SCRIPT  = "/home/pi/myscript.py"   # Absolute path to the script on the Pi
+REMOTE_HOST    = "10.42.0.222"           # IP or hostname of the target Pi
+REMOTE_USER    = "dongle-rp1"                      # SSH username
+REMOTE_SCRIPT  = "/home/admin/dongle-warrior-bakery/EV_Charger/test_server.py"   # Absolute path to the script on the Pi
 PYTHON_BIN     = "python3"                # Python binary on the remote Pi
 # ─────────────────────────────────────────────────────────────────────────────
 
