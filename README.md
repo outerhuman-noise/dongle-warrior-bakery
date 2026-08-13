@@ -1,6 +1,6 @@
 # Dongle Warrior Bakery — IoT security testbed
 
-This project uses Raspberry Pi devices to simulate an IoT system for testing security issues. The research context is an EV charging system: the Pi devices and associated software will act as chargers, orchestrators, and network interactions so we can exercise and evaluate attack surfaces, monitoring, and mitigation strategies.
+This project uses Raspberry Pi devices to simulate an IoT system for testing security issues. The research context is an EV charging system where the Pi devices and associated software will act as chargers, orchestrators, and network interactions so we can exercise and evaluate attack surfaces, monitoring, and mitigation strategies.
 
 # Fixing the `paramiko` import (Pylance: "could not be resolved")
 
