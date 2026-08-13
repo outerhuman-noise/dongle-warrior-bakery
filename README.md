@@ -4,7 +4,9 @@ This project uses Raspberry Pi devices to simulate an IoT system for testing sec
 
 # Fixing the `paramiko` import (Pylance: "could not be resolved")
 
-This project uses `paramiko` for SSH connections in the orchestrator script [Orchestrator/run_remote.py](Orchestrator/run_remote.py#L1-L120).
+This project uses `paramiko` for SSH connections in the orchestrator script [Orchestrator/ssh/run_remote.py](Orchestrator/ssh/run_remote.py#L1-L120).
+The simulated risks placeholders live in [Orchestrator/risks/simulated_risks.py](Orchestrator/risks/simulated_risks.py#L1-L120).
+
 If your editor (Pylance) reports "Import 'paramiko' could not be resolved from source", follow the steps below.
 
 **Cause:** The language server is using a different Python interpreter than the one where `paramiko` is installed.
