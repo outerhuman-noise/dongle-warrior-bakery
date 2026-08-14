@@ -1,8 +1,8 @@
 """
-EV Client
+EV Client Methods
 
 Placeholder methods for EV side communication
-with other testbed components.
+with EVSE server, utilising ISO 15118.
 """
 
 def discover_evse():
