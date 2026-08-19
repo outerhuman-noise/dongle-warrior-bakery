@@ -1,0 +1,5 @@
+{
+  "hostname": "dongle-rp7",
+  "role": "orchestrator",
+  "ip": "10.42.0.1"
+}

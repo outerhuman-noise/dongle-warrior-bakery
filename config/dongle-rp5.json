@@ -1,0 +1,7 @@
+{
+  "hostname": "dongle-rp5",
+  "role": "csms",
+  "host": "0.0.0.0",
+  "port": 9000,
+  "heartbeat_interval": 10
+}
