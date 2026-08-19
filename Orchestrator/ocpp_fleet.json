@@ -1,0 +1,23 @@
+{
+  "repo_dir": "/home/admin/dongle-warrior-bakery",
+  "services": [
+    {
+      "name": "csms",
+      "host": "10.42.0.69",
+      "startup_order": 1,
+      "command": ".venv/bin/python main.py"
+    },
+    {
+      "name": "charger-01",
+      "host": "10.42.0.222",
+      "startup_order": 2,
+      "command": ".venv/bin/python main.py"
+    },
+    {
+      "name": "charger-02",
+      "host": "10.42.0.215",
+      "startup_order": 2,
+      "command": ".venv/bin/python main.py"
+    }
+  ]
+}
