@@ -1,0 +1,9 @@
+{
+  "hostname": "dongle-rp3",
+  "role": "charger",
+  "charge_point_id": "CHARGER_02",
+  "csms_url": "ws://10.42.0.69:9000",
+  "vendor_name": "Project 25",
+  "model": "RPi5 Simulator",
+  "reconnect_delay": 5
+}

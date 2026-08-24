@@ -1,0 +1,5 @@
+{
+  "hostname": "dongle-rp6",
+  "role": "reserved",
+  "future_role": "grid, observability, or payment simulator"
+}

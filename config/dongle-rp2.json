@@ -1,0 +1,6 @@
+{
+  "hostname": "dongle-rp2",
+  "role": "ev",
+  "charger_host": "10.42.0.222",
+  "charger_port": 65432
+}

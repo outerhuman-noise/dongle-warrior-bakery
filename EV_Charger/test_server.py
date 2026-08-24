@@ -39,4 +39,5 @@ def main():
                 print(f"Received: {data.decode()}")
                 conn.sendall(b"Message received!")
 
-main()
+if __name__ == "__main__":
+    main()
