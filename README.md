@@ -165,19 +165,69 @@ two charging stations. Press `Ctrl+C` on RP7 to stop all three processes.
 If keys aren't configured yet, `--ask-password` prompts without storing the
 password in the repository.
 
+## Run a live RP1-to-RP5 OCPP smoke test
+
+`Orchestrator/run_ocpp_fleet.py` is the single entry point for both the
+long-running fleet and short smoke tests. Use smoke-test mode after the CSMS
+is already listening on RP5. It checks that RP5 port 9000 is reachable,
+starts a one-shot OCPP client on RP1 over SSH, and passes only after the CSMS
+accepts `BootNotification` and acknowledges a heartbeat. It stops the remote
+client automatically and saves the charger output under `captures/` on RP7.
+
+Trust RP1's SSH host key once from RP7:
+
+```bash
+ssh admin@10.42.0.222 exit
+```
+
+Then run:
+
+```bash
+cd /home/admin/dongle-warrior-bakery
+. .venv/bin/activate
+python3 Orchestrator/run_ocpp_fleet.py --smoke-test --ask-password
+```
+
+The successful final line is:
+
+```text
+PASS: BootNotification accepted and Heartbeat acknowledged.
+```
+
+To test RP3 and `CHARGER_02` instead:
+
+```bash
+python3 Orchestrator/run_ocpp_fleet.py --smoke-test charger-02 --ask-password
+```
+
+For mTLS, start RP5 with its CSMS certificate and add `--tls` to the smoke
+test. The matching private key and CA must already be provisioned on RP1 or
+RP3; private keys are intentionally excluded from Git.
+
 ## Test locally
 
-The integration test starts a temporary CSMS and connects two real OCPP
-clients to it. Each client sends `BootNotification`, `StatusNotification`,
-and `Heartbeat` messages.
+The integration suite starts a temporary CSMS and checks charger boot,
+status, heartbeat, transaction events, and the EV-to-charger trigger. mTLS
+tests run only when the complete generated certificate and private-key set is
+present.
 
 ```bash
 python3 -m unittest -v tests.test_ocpp_integration
 ```
 
-## Next milestone
+## Recommended next milestones
 
-After both charging stations remain connected reliably, convert the
-EV-facing TCP server to `asyncio` and translate its events into OCPP
-`StatusNotification` and `TransactionEvent` messages. Payment and account
-authorization are intentionally out of scope for this milestone.
+1. Persist CSMS events on RP5 in SQLite or JSONL. The current station and
+   transaction state is in memory and is lost when the server stops.
+2. Add `ev_port`, session timing, and TLS settings to the hostname JSON files
+   and wire them through `main.py`, so RP2/RP4 can drive RP1/RP3 without
+   one-off commands.
+3. Define one certificate-provisioning workflow: generate one test CA in a
+   controlled location, give each Pi only its own private key, and never
+   distribute private keys through Git.
+4. Run the vendored ISO 15118 EVCC/SECC as an isolated RP2-to-RP1 test, then
+   translate a successful ISO session into the existing OCPP transaction
+   flow.
+5. Add operational evidence: timestamped application logs, packet captures,
+   and a small session-summary report. Payment remains out of scope until the
+   protocol and persistence layers are reliable.
