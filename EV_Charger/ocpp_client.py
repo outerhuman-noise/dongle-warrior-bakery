@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import logging
 from pathlib import Path
+import re
 import ssl
 
 import websockets
@@ -41,6 +42,15 @@ def build_ssl_context(
     ctx.load_cert_chain(certfile, keyfile)
     ctx.load_verify_locations(cafile)
     return ctx
+
+
+def default_certificate_stem(charge_point_id: str) -> str:
+    """Map testbed charge-point IDs to generated certificate filenames."""
+
+    match = re.fullmatch(r"CHARGER_0*(\d+)", charge_point_id, re.IGNORECASE)
+    if match:
+        return f"charger{int(match.group(1))}"
+    return charge_point_id.lower()
 
 
 def utc_now() -> str:
@@ -169,7 +179,7 @@ async def run_session(
     *,
     heartbeat_limit: int | None = None,
 ) -> None:
-    """Run one charger connection; heartbeat_limit is used by tests."""
+    """Run one charger connection; heartbeat_limit enables one-shot tests."""
 
     LOGGER.info(
         "%s connecting to %s",
@@ -260,6 +270,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--certfile", type=Path, default=None)
     parser.add_argument("--keyfile", type=Path, default=None)
     parser.add_argument("--cafile", type=Path, default=CERTS_DIR / "ca.crt")
+    parser.add_argument(
+        "--heartbeat-limit",
+        type=int,
+        help="Exit after this many acknowledged heartbeats (smoke-test mode)",
+    )
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args()
 
@@ -272,8 +287,9 @@ def main() -> None:
     )
     ssl_context = None
     if args.tls:
-        certfile = args.certfile or CERTS_DIR / f"{args.charge_point_id.lower()}.crt"
-        keyfile = args.keyfile or CERTS_DIR / f"{args.charge_point_id.lower()}.key"
+        certificate_stem = default_certificate_stem(args.charge_point_id)
+        certfile = args.certfile or CERTS_DIR / f"{certificate_stem}.crt"
+        keyfile = args.keyfile or CERTS_DIR / f"{certificate_stem}.key"
         ssl_context = build_ssl_context(certfile, keyfile, args.cafile)
     settings = ChargerSettings(
         charge_point_id=args.charge_point_id,
@@ -281,7 +297,12 @@ def main() -> None:
         reconnect_delay=args.reconnect_delay,
         ssl_context=ssl_context,
     )
-    asyncio.run(run_forever(settings))
+    if args.heartbeat_limit is not None:
+        if args.heartbeat_limit < 1:
+            raise SystemExit("--heartbeat-limit must be at least 1")
+        asyncio.run(run_session(settings, heartbeat_limit=args.heartbeat_limit))
+    else:
+        asyncio.run(run_forever(settings))
 
 
 if __name__ == "__main__":

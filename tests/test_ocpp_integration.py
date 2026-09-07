@@ -10,7 +10,16 @@ from CSMS.server import CentralSystemState, CERTS_DIR, build_ssl_context as csms
 from EV_Charger.ocpp_client import ChargerSettings, SimulatedChargingStation, build_ssl_context as charger_ssl, run_session
 from EV.ev_client import run_ev_session
 
-TLS_AVAILABLE = (CERTS_DIR / "ca.crt").exists()
+TLS_FILES = (
+    CERTS_DIR / "ca.crt",
+    CERTS_DIR / "csms.crt",
+    CERTS_DIR / "csms.key",
+    CERTS_DIR / "charger1.crt",
+    CERTS_DIR / "charger1.key",
+    CERTS_DIR / "charger2.crt",
+    CERTS_DIR / "charger2.key",
+)
+TLS_AVAILABLE = all(path.exists() for path in TLS_FILES)
 
 OCPP_SUBPROTOCOL = "ocpp2.0.1"
 
@@ -130,7 +139,10 @@ class TwoChargerIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(ended["seq_no"], 1)
 
 
-@unittest.skipUnless(TLS_AVAILABLE, "certs/ not found — run setup/generate_certs.py first")
+@unittest.skipUnless(
+    TLS_AVAILABLE,
+    "complete certificate set not found — run setup/generate_certs.py first",
+)
 class MtlsIntegrationTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
         self.state = CentralSystemState()
