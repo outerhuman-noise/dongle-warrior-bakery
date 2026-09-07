@@ -73,7 +73,7 @@ def pull_repo():
 def install_python_deps():
     req_file = os.path.join(REPO_DIR, "requirements.txt")
     if os.path.isfile(req_file):
-        run([sys.executable, "-m", "pip", "install", "-r", req_file])
+        run([sys.executable, "-m", "pip", "install", "-r", req_file, "--break-system-packages"])
     else:
         print(f"WARNING: {req_file} not found, skipping pip install.")
 
