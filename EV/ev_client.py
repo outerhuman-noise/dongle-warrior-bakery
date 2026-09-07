@@ -1,46 +1,75 @@
-"""
-EV Client Methods
+"""Asyncio TCP client that simulates an EV connecting to a charger."""
 
-Placeholder methods for EV side communication
-with EVSE server, utilising ISO 15118.
-"""
+from __future__ import annotations
 
-def discover_evse():
-    """Discover EV Charger (EVSE - Electric Vehicle Supply Equipment) on the network"""
-    pass
+import asyncio
+import logging
 
-def establish_tls_connection():
-    """Establish TLS connection to EVSE"""
-    pass
+LOGGER = logging.getLogger("project25.ev")
 
-def setup_communication_session():
-    """Setup communication session with EVSE"""
-    pass
 
-def discover_services():
-    """Discover available services on EVSE"""
-    pass
+async def run_ev_session(
+    charger_host: str,
+    charger_port: int,
+    charge_duration: float = 30.0,
+) -> None:
+    reader, writer = await asyncio.open_connection(charger_host, charger_port)
+    LOGGER.info("EV connected to charger at %s:%s", charger_host, charger_port)
 
-def select_service():
-    """Select a specific service to use on EVSE"""
-    pass
+    try:
+        writer.write(b"PLUG_IN\n")
+        await writer.drain()
+        LOGGER.info("EV sent PLUG_IN")
 
-def authorize():
-    """    Authorize via Plug & Charge (PnC) or EVCC token exchange"""
-    pass
+        await asyncio.sleep(charge_duration)
 
-def get_charge_parameters():
-    """Get charger parameters (max power, voltage limits)"""
-    pass
+        writer.write(b"UNPLUG\n")
+        await writer.drain()
+        LOGGER.info("EV sent UNPLUG")
+    finally:
+        writer.close()
+        await writer.wait_closed()
+        LOGGER.info("EV disconnected from charger")
 
-def request_power_delivery():
-    """Start/Stop power delivery from EVSE"""
-    pass
 
-def get_meter_values():
-    """Get metering values (energy delivered, current, voltage)"""
-    pass
+async def run_forever(
+    charger_host: str,
+    charger_port: int,
+    charge_duration: float,
+    session_interval: float,
+) -> None:
+    while True:
+        try:
+            await run_ev_session(charger_host, charger_port, charge_duration)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            LOGGER.exception("EV session failed; retrying in %.1fs", session_interval)
+        await asyncio.sleep(session_interval)
 
-def terminate_session():
-    """Terminate communication session with EVSE"""
-    pass
+
+def main() -> None:
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--charger-host", default="10.42.0.222")
+    parser.add_argument("--charger-port", type=int, default=65432)
+    parser.add_argument("--charge-duration", type=float, default=30.0)
+    parser.add_argument("--session-interval", type=float, default=60.0)
+    parser.add_argument("--log-level", default="INFO")
+    args = parser.parse_args()
+
+    logging.basicConfig(
+        level=getattr(logging, args.log_level.upper(), logging.INFO),
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+    asyncio.run(run_forever(
+        args.charger_host,
+        args.charger_port,
+        args.charge_duration,
+        args.session_interval,
+    ))
+
+
+if __name__ == "__main__":
+    main()
