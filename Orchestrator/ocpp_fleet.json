@@ -1,5 +1,6 @@
 {
   "repo_dir": "/home/admin/dongle-warrior-bakery",
+  "csms_url": "ws://10.42.0.69:9000",
   "services": [
     {
       "name": "csms",
@@ -10,12 +11,16 @@
     {
       "name": "charger-01",
       "host": "10.42.0.222",
+      "charge_point_id": "CHARGER_01",
+      "certificate_stem": "charger1",
       "startup_order": 2,
       "command": ".venv/bin/python main.py"
     },
     {
       "name": "charger-02",
       "host": "10.42.0.215",
+      "charge_point_id": "CHARGER_02",
+      "certificate_stem": "charger2",
       "startup_order": 2,
       "command": ".venv/bin/python main.py"
     }
