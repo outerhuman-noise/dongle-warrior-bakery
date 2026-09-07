@@ -1,0 +1,6 @@
+__pycache__/
+.idea/
+# Runtime data
+pids
+*.pid
+*.log
