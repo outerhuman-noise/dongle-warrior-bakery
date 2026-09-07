@@ -8,8 +8,12 @@ from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import logging
+from pathlib import Path
+import ssl
 
 import websockets
+
+CERTS_DIR = Path(__file__).parent.parent / "certs"
 
 from EV_Charger.ev_charger import start_ev_server
 from ocpp.v201 import ChargePoint as OcppChargePoint
@@ -28,6 +32,17 @@ LOGGER = logging.getLogger("project25.charger")
 OCPP_SUBPROTOCOL = "ocpp2.0.1"
 
 
+def build_ssl_context(
+    certfile: Path,
+    keyfile: Path,
+    cafile: Path,
+) -> ssl.SSLContext:
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    ctx.load_cert_chain(certfile, keyfile)
+    ctx.load_verify_locations(cafile)
+    return ctx
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -42,6 +57,7 @@ class ChargerSettings:
     session_interval: float = 60.0
     session_duration: float = 30.0
     ev_port: int | None = None
+    ssl_context: ssl.SSLContext | None = None
 
     @property
     def websocket_url(self) -> str:
@@ -166,6 +182,7 @@ async def run_session(
         ping_interval=20,
         ping_timeout=20,
         proxy=None,
+        ssl=settings.ssl_context,
     ) as websocket:
         station = SimulatedChargingStation(
             settings.charge_point_id,
@@ -239,6 +256,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--id", required=True, dest="charge_point_id")
     parser.add_argument("--csms", default="ws://10.42.0.69:9000")
     parser.add_argument("--reconnect-delay", type=float, default=5.0)
+    parser.add_argument("--tls", action="store_true", help="Enable mTLS")
+    parser.add_argument("--certfile", type=Path, default=None)
+    parser.add_argument("--keyfile", type=Path, default=None)
+    parser.add_argument("--cafile", type=Path, default=CERTS_DIR / "ca.crt")
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args()
 
@@ -249,10 +270,16 @@ def main() -> None:
         level=getattr(logging, args.log_level.upper(), logging.INFO),
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+    ssl_context = None
+    if args.tls:
+        certfile = args.certfile or CERTS_DIR / f"{args.charge_point_id.lower()}.crt"
+        keyfile = args.keyfile or CERTS_DIR / f"{args.charge_point_id.lower()}.key"
+        ssl_context = build_ssl_context(certfile, keyfile, args.cafile)
     settings = ChargerSettings(
         charge_point_id=args.charge_point_id,
         csms_url=args.csms,
         reconnect_delay=args.reconnect_delay,
+        ssl_context=ssl_context,
     )
     asyncio.run(run_forever(settings))
 
