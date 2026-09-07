@@ -19,6 +19,7 @@ import paramiko
 
 REPO_DIR = "/home/admin/dongle-warrior-bakery"
 CSMS_HOST = "10.42.0.69"
+DISCOVERY_HOST = "10.42.0.83"
 CSMS_PORT = 9000
 
 
@@ -88,7 +89,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--identity", help="SSH private-key path")
     parser.add_argument("--ask-password", action="store_true")
     parser.add_argument("--rp5-host", default=CSMS_HOST, help="CSMS IP")
-    parser.add_argument("--rp6-host", required=True, help="Discovery node IP")
+    parser.add_argument("--rp6-host", default=DISCOVERY_HOST, help="Discovery node IP")
     parser.add_argument("--csms-port", type=int, default=CSMS_PORT)
     return parser.parse_args()
 

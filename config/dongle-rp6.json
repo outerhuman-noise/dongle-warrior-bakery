@@ -1,5 +1,5 @@
 {
   "hostname": "dongle-rp6",
-  "role": "reserved",
-  "future_role": "grid, observability, or payment simulator"
+  "role": "discovery",
+  "host": "10.42.0.83"
 }
