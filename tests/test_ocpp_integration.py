@@ -6,9 +6,11 @@ import unittest
 
 import websockets
 
-from CSMS.server import CentralSystemState, start_server
-from EV_Charger.ocpp_client import ChargerSettings, SimulatedChargingStation, run_session
+from CSMS.server import CentralSystemState, CERTS_DIR, build_ssl_context as csms_ssl, start_server
+from EV_Charger.ocpp_client import ChargerSettings, SimulatedChargingStation, build_ssl_context as charger_ssl, run_session
 from EV.ev_client import run_ev_session
+
+TLS_AVAILABLE = (CERTS_DIR / "ca.crt").exists()
 
 OCPP_SUBPROTOCOL = "ocpp2.0.1"
 
@@ -126,6 +128,75 @@ class TwoChargerIntegrationTest(unittest.IsolatedAsyncioTestCase):
         started, ended = record.transaction_events
         self.assertEqual(started["seq_no"], 0)
         self.assertEqual(ended["seq_no"], 1)
+
+
+@unittest.skipUnless(TLS_AVAILABLE, "certs/ not found — run setup/generate_certs.py first")
+class MtlsIntegrationTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.state = CentralSystemState()
+        server_ctx = csms_ssl(
+            CERTS_DIR / "csms.crt",
+            CERTS_DIR / "csms.key",
+            CERTS_DIR / "ca.crt",
+        )
+        self.server, _ = await start_server(
+            "127.0.0.1",
+            0,
+            state=self.state,
+            heartbeat_interval=1,
+            ssl_context=server_ctx,
+        )
+        self.port = self.server.sockets[0].getsockname()[1]
+
+    async def asyncTearDown(self) -> None:
+        self.server.close()
+        await self.server.wait_closed()
+
+    async def test_charger1_rsa_mtls(self) -> None:
+        ctx = charger_ssl(
+            CERTS_DIR / "charger1.crt",
+            CERTS_DIR / "charger1.key",
+            CERTS_DIR / "ca.crt",
+        )
+        settings = ChargerSettings(
+            "CHARGER_01",
+            f"wss://127.0.0.1:{self.port}",
+            ssl_context=ctx,
+        )
+        await run_session(settings, heartbeat_limit=1)
+
+        record = self.state.stations["CHARGER_01"]
+        self.assertEqual(record.boot_count, 1)
+        self.assertEqual(record.heartbeat_count, 1)
+
+    async def test_charger2_ecdsa_mtls(self) -> None:
+        ctx = charger_ssl(
+            CERTS_DIR / "charger2.crt",
+            CERTS_DIR / "charger2.key",
+            CERTS_DIR / "ca.crt",
+        )
+        settings = ChargerSettings(
+            "CHARGER_02",
+            f"wss://127.0.0.1:{self.port}",
+            ssl_context=ctx,
+        )
+        await run_session(settings, heartbeat_limit=1)
+
+        record = self.state.stations["CHARGER_02"]
+        self.assertEqual(record.boot_count, 1)
+        self.assertEqual(record.heartbeat_count, 1)
+
+    async def test_untrusted_client_is_rejected(self) -> None:
+        import ssl
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.load_verify_locations(CERTS_DIR / "ca.crt")
+        settings = ChargerSettings(
+            "CHARGER_BAD",
+            f"wss://127.0.0.1:{self.port}",
+            ssl_context=ctx,
+        )
+        with self.assertRaises(Exception):
+            await run_session(settings, heartbeat_limit=1)
 
 
 if __name__ == "__main__":
