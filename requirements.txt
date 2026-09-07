@@ -1,4 +1,6 @@
 ocpp==2.1.0
 websockets==15.0.1
 paramiko>=3.4,<4
+cryptography>=46.0.7
+sslyze>=6.3.1
 
