@@ -7,6 +7,8 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import logging
+from pathlib import Path
+import ssl
 from typing import Any
 from urllib.parse import unquote, urlsplit
 
@@ -21,6 +23,19 @@ from ocpp.v201.enums import Action, RegistrationStatusEnumType
 
 LOGGER = logging.getLogger("project25.csms")
 OCPP_SUBPROTOCOL = "ocpp2.0.1"
+CERTS_DIR = Path(__file__).parent.parent / "certs"
+
+
+def build_ssl_context(
+    certfile: Path,
+    keyfile: Path,
+    cafile: Path,
+) -> ssl.SSLContext:
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.load_cert_chain(certfile, keyfile)
+    ctx.load_verify_locations(cafile)
+    ctx.verify_mode = ssl.CERT_REQUIRED
+    return ctx
 
 
 def utc_now() -> str:
@@ -243,6 +258,7 @@ async def start_server(
     *,
     state: CentralSystemState | None = None,
     heartbeat_interval: int = 10,
+    ssl_context: ssl.SSLContext | None = None,
 ) -> tuple[Any, CentralSystem]:
     """Start a CSMS server and return it with its in-memory system state."""
 
@@ -257,6 +273,7 @@ async def start_server(
         subprotocols=[OCPP_SUBPROTOCOL],
         ping_interval=20,
         ping_timeout=20,
+        ssl=ssl_context,
     )
     return server, central_system
 
@@ -265,14 +282,18 @@ async def serve_forever(
     host: str = "0.0.0.0",
     port: int = 9000,
     heartbeat_interval: int = 10,
+    ssl_context: ssl.SSLContext | None = None,
 ) -> None:
     server, _ = await start_server(
         host,
         port,
         heartbeat_interval=heartbeat_interval,
+        ssl_context=ssl_context,
     )
+    scheme = "wss" if ssl_context else "ws"
     LOGGER.info(
-        "OCPP 2.0.1 Central System listening on ws://%s:%s",
+        "OCPP 2.0.1 Central System listening on %s://%s:%s",
+        scheme,
         host,
         port,
     )
@@ -284,6 +305,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=9000)
     parser.add_argument("--heartbeat-interval", type=int, default=10)
+    parser.add_argument("--tls", action="store_true", help="Enable mTLS")
+    parser.add_argument("--certfile", type=Path, default=CERTS_DIR / "csms.crt")
+    parser.add_argument("--keyfile", type=Path, default=CERTS_DIR / "csms.key")
+    parser.add_argument("--cafile", type=Path, default=CERTS_DIR / "ca.crt")
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args()
 
@@ -294,11 +319,17 @@ def main() -> None:
         level=getattr(logging, args.log_level.upper(), logging.INFO),
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+    ssl_context = (
+        build_ssl_context(args.certfile, args.keyfile, args.cafile)
+        if args.tls
+        else None
+    )
     asyncio.run(
         serve_forever(
             host=args.host,
             port=args.port,
             heartbeat_interval=args.heartbeat_interval,
+            ssl_context=ssl_context,
         )
     )
 

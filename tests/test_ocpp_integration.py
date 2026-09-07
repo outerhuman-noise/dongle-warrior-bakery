@@ -8,6 +8,7 @@ import websockets
 
 from CSMS.server import CentralSystemState, start_server
 from EV_Charger.ocpp_client import ChargerSettings, SimulatedChargingStation, run_session
+from EV.ev_client import run_ev_session
 
 OCPP_SUBPROTOCOL = "ocpp2.0.1"
 
@@ -90,6 +91,41 @@ class TwoChargerIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             ended["transaction_info"]["transaction_id"], "CHARGER_01-TX-1"
         )
+
+
+    async def test_ev_triggers_charging_session_via_charger(self) -> None:
+        import socket
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            ev_port = sock.getsockname()[1]
+
+        csms_url = f"ws://127.0.0.1:{self.port}"
+        settings = ChargerSettings(
+            "CHARGER_01",
+            csms_url,
+            session_duration=0.1,
+            ev_port=ev_port,
+        )
+
+        charger_task = asyncio.create_task(run_session(settings))
+
+        for _ in range(20):
+            await asyncio.sleep(0.05)
+            if "CHARGER_01" in self.state.stations and self.state.stations["CHARGER_01"].boot_count > 0:
+                break
+
+        await run_ev_session("127.0.0.1", ev_port, charge_duration=0.1)
+
+        await asyncio.sleep(0.3)
+        charger_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await charger_task
+
+        record = self.state.stations["CHARGER_01"]
+        self.assertEqual(len(record.transaction_events), 2)
+        started, ended = record.transaction_events
+        self.assertEqual(started["seq_no"], 0)
+        self.assertEqual(ended["seq_no"], 1)
 
 
 if __name__ == "__main__":
