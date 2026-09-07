@@ -11,6 +11,7 @@ import logging
 
 import websockets
 
+from EV_Charger.ev_charger import start_ev_server
 from ocpp.v201 import ChargePoint as OcppChargePoint
 from ocpp.v201 import call, datatypes
 from ocpp.v201.enums import (
@@ -40,6 +41,7 @@ class ChargerSettings:
     reconnect_delay: float = 5.0
     session_interval: float = 60.0
     session_duration: float = 30.0
+    ev_port: int | None = None
 
     @property
     def websocket_url(self) -> str:
@@ -194,9 +196,23 @@ async def run_session(
                     await station.simulate_charging_session(tx_id, settings.session_duration)
 
             loops = [heartbeat_loop()]
+            ev_server = None
             if heartbeat_limit is None:
-                loops.append(session_loop())
-            await asyncio.gather(*loops)
+                if settings.ev_port is not None:
+                    ev_server = await start_ev_server(
+                        station,
+                        settings.session_duration,
+                        port=settings.ev_port,
+                    )
+                else:
+                    loops.append(session_loop())
+
+            try:
+                await asyncio.gather(*loops)
+            finally:
+                if ev_server is not None:
+                    ev_server.close()
+                    await ev_server.wait_closed()
         finally:
             listener.cancel()
             with suppress(asyncio.CancelledError):
