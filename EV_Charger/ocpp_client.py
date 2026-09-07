@@ -122,6 +122,27 @@ class SimulatedChargingStation(OcppChargePoint):
         )
         LOGGER.info("Transaction Event %s acknowledged for %s", event_type, self.id)
 
+    async def simulate_charging_session(
+            self,
+            transaction_id: str,
+            session_duration: float,
+    ) -> None:
+        await self.send_status(ConnectorStatusEnumType.occupied)
+        await self.send_transaction_event(
+            TransactionEventEnumType.started,
+            TriggerReasonEnumType.cable_plugged_in,
+            seq_no=0,
+            transaction_id=transaction_id,
+        )
+        await asyncio.sleep(session_duration)
+        await self.send_transaction_event(
+            TransactionEventEnumType.ended,
+            TriggerReasonEnumType.ev_departed,
+            seq_no=1,
+            transaction_id=transaction_id,
+        )
+        await self.send_status(ConnectorStatusEnumType.available)
+
 
 async def run_session(
     settings: ChargerSettings,
