@@ -1,42 +1,60 @@
-"""
-EVSE Methods
+"""Asyncio TCP server that receives EV plug-in/unplug signals and triggers OCPP sessions."""
 
-Placeholder methods for EVSE side communication
-with client EV utilising ISO 15118.
-"""
+from __future__ import annotations
 
-def handle_discovery():
-    """Handle discovery request from EV"""
-    pass
+import asyncio
+from functools import partial
+import logging
 
-def handle_session_setup():
-    """Handle session setup request from EV"""
-    pass
+LOGGER = logging.getLogger("project25.ev_charger")
 
-def handle_service_discovery():
-    """Handle service discovery request from EV"""
-    pass
+EV_PORT = 65432
 
-def handle_service_selection():
-    """Handle service selection request from EV"""
-    pass
 
-def handle_authorization():
-    """Handle authorization request from EV"""
-    pass
+async def handle_ev_connection(
+    reader: asyncio.StreamReader,
+    writer: asyncio.StreamWriter,
+    station: object,
+    session_duration: float,
+    tx_id_counter: list[int],
+) -> None:
+    peer = writer.get_extra_info("peername")
+    LOGGER.info("EV connected from %s", peer)
 
-def handle_charge_parameters_request():
-    """Handle request for charger parameters from EV"""
-    pass
+    try:
+        while True:
+            line = await reader.readline()
+            if not line:
+                break
+            message = line.decode().strip()
+            LOGGER.info("Received from EV: %s", message)
 
-def handle_power_delivery():
-    """Handle request to start/stop power delivery from EV"""
-    pass
+            if message == "PLUG_IN":
+                tx_id_counter[0] += 1
+                tx_id = f"{station.id}-TX-{tx_id_counter[0]}"
+                asyncio.create_task(station.simulate_charging_session(tx_id, session_duration))
+            elif message == "UNPLUG":
+                LOGGER.info("EV unplugged from %s", station.id)
+            else:
+                LOGGER.warning("Unknown message from EV: %s", message)
+    finally:
+        writer.close()
+        LOGGER.info("EV disconnected from %s", peer)
 
-def handle_meter_values_request():
-    """Handle request for metering values from EV"""
-    pass
 
-def handle_session_termination():
-    """Handle session termination request from EV"""
-    pass
+async def start_ev_server(
+    station: object,
+    session_duration: float,
+    host: str = "0.0.0.0",
+    port: int = EV_PORT,
+) -> asyncio.Server:
+    tx_id_counter = [0]
+    handler = partial(
+        handle_ev_connection,
+        station=station,
+        session_duration=session_duration,
+        tx_id_counter=tx_id_counter,
+    )
+    server = await asyncio.start_server(handler, host, port)
+    LOGGER.info("EV-facing TCP server listening on %s:%s", host, port)
+    return server

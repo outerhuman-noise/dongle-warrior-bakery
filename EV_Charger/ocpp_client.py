@@ -11,12 +11,16 @@ import logging
 
 import websockets
 
+from EV_Charger.ev_charger import start_ev_server
 from ocpp.v201 import ChargePoint as OcppChargePoint
 from ocpp.v201 import call, datatypes
 from ocpp.v201.enums import (
     BootReasonEnumType,
     ConnectorStatusEnumType,
     RegistrationStatusEnumType,
+    TransactionEventEnumType,
+    TriggerReasonEnumType,
+    ChargingStateEnumType,
 )
 
 
@@ -35,6 +39,9 @@ class ChargerSettings:
     vendor_name: str = "Project 25"
     model: str = "RPi5 Simulator"
     reconnect_delay: float = 5.0
+    session_interval: float = 60.0
+    session_duration: float = 30.0
+    ev_port: int | None = None
 
     @property
     def websocket_url(self) -> str:
@@ -89,6 +96,57 @@ class SimulatedChargingStation(OcppChargePoint):
             )
         )
 
+    async def send_transaction_event(
+            self,
+            event_type: TransactionEventEnumType,
+            trigger_reason: TriggerReasonEnumType,
+            seq_no: int,
+            transaction_id: str,
+            charging_state: ChargingStateEnumType=None,
+            id_token: dict=None,
+            meter_value: list=None,
+            evse_id: int=None,
+            connector_id: int=None,
+    ):
+        transaction_info = {"transaction_id": transaction_id}
+        if charging_state is not None:
+            transaction_info["charging_state"] = charging_state
+
+        response = await self.call(
+            call.TransactionEvent(
+                event_type=event_type.value,
+                timestamp=utc_now(),
+                trigger_reason=trigger_reason.value,
+                seq_no=seq_no,
+                transaction_info=transaction_info,
+                id_token=id_token,
+                meter_value=meter_value,
+                evse={"id": evse_id, "connector_id": connector_id} if evse_id else None,
+            )
+        )
+        LOGGER.info("Transaction Event %s acknowledged for %s", event_type, self.id)
+
+    async def simulate_charging_session(
+            self,
+            transaction_id: str,
+            session_duration: float,
+    ) -> None:
+        await self.send_status(ConnectorStatusEnumType.occupied)
+        await self.send_transaction_event(
+            TransactionEventEnumType.started,
+            TriggerReasonEnumType.cable_plugged_in,
+            seq_no=0,
+            transaction_id=transaction_id,
+        )
+        await asyncio.sleep(session_duration)
+        await self.send_transaction_event(
+            TransactionEventEnumType.ended,
+            TriggerReasonEnumType.ev_departed,
+            seq_no=1,
+            transaction_id=transaction_id,
+        )
+        await self.send_status(ConnectorStatusEnumType.available)
+
 
 async def run_session(
     settings: ChargerSettings,
@@ -122,11 +180,39 @@ async def run_session(
             )
             await station.send_status(ConnectorStatusEnumType.available)
 
-            heartbeat_count = 0
-            while heartbeat_limit is None or heartbeat_count < heartbeat_limit:
-                await asyncio.sleep(heartbeat_interval)
-                await station.send_heartbeat()
-                heartbeat_count += 1
+            async def heartbeat_loop() -> None:
+                count = 0
+                while heartbeat_limit is None or count < heartbeat_limit:
+                    await asyncio.sleep(heartbeat_interval)
+                    await station.send_heartbeat()
+                    count += 1
+
+            async def session_loop() -> None:
+                session_count = 0
+                while True:
+                    await asyncio.sleep(settings.session_interval)
+                    session_count += 1
+                    tx_id = f"{settings.charge_point_id}-TX-{session_count}"
+                    await station.simulate_charging_session(tx_id, settings.session_duration)
+
+            loops = [heartbeat_loop()]
+            ev_server = None
+            if heartbeat_limit is None:
+                if settings.ev_port is not None:
+                    ev_server = await start_ev_server(
+                        station,
+                        settings.session_duration,
+                        port=settings.ev_port,
+                    )
+                else:
+                    loops.append(session_loop())
+
+            try:
+                await asyncio.gather(*loops)
+            finally:
+                if ev_server is not None:
+                    ev_server.close()
+                    await ev_server.wait_closed()
         finally:
             listener.cancel()
             with suppress(asyncio.CancelledError):
