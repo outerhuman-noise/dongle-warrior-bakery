@@ -38,6 +38,8 @@ class ChargerSettings:
     vendor_name: str = "Project 25"
     model: str = "RPi5 Simulator"
     reconnect_delay: float = 5.0
+    session_interval: float = 60.0
+    session_duration: float = 30.0
 
     @property
     def websocket_url(self) -> str:
@@ -176,11 +178,25 @@ async def run_session(
             )
             await station.send_status(ConnectorStatusEnumType.available)
 
-            heartbeat_count = 0
-            while heartbeat_limit is None or heartbeat_count < heartbeat_limit:
-                await asyncio.sleep(heartbeat_interval)
-                await station.send_heartbeat()
-                heartbeat_count += 1
+            async def heartbeat_loop() -> None:
+                count = 0
+                while heartbeat_limit is None or count < heartbeat_limit:
+                    await asyncio.sleep(heartbeat_interval)
+                    await station.send_heartbeat()
+                    count += 1
+
+            async def session_loop() -> None:
+                session_count = 0
+                while True:
+                    await asyncio.sleep(settings.session_interval)
+                    session_count += 1
+                    tx_id = f"{settings.charge_point_id}-TX-{session_count}"
+                    await station.simulate_charging_session(tx_id, settings.session_duration)
+
+            loops = [heartbeat_loop()]
+            if heartbeat_limit is None:
+                loops.append(session_loop())
+            await asyncio.gather(*loops)
         finally:
             listener.cancel()
             with suppress(asyncio.CancelledError):
