@@ -17,6 +17,9 @@ from ocpp.v201.enums import (
     BootReasonEnumType,
     ConnectorStatusEnumType,
     RegistrationStatusEnumType,
+    TransactionEventEnumType,
+    TriggerReasonEnumType,
+    ChargingStateEnumType,
 )
 
 
@@ -88,6 +91,36 @@ class SimulatedChargingStation(OcppChargePoint):
                 connector_id=connector_id,
             )
         )
+
+    async def send_transaction_event(
+            self,
+            event_type: TransactionEventEnumType,
+            trigger_reason: TriggerReasonEnumType,
+            seq_no: int,
+            transaction_id: str,
+            charging_state: ChargingStateEnumType=None,
+            id_token: dict=None,
+            meter_value: list=None,
+            evse_id: int=None,
+            connector_id: int=None,
+    ):
+        transaction_info = {"transaction_id": transaction_id}
+        if charging_state is not None:
+            transaction_info["charging_state"] = charging_state
+
+        response = await self.call(
+            call.TransactionEvent(
+                event_type=event_type.value,
+                timestamp=utc_now(),
+                trigger_reason=trigger_reason.value,
+                seq_no=seq_no,
+                transaction_info=transaction_info,
+                id_token=id_token,
+                meter_value=meter_value,
+                evse={"id": evse_id, "connector_id": connector_id} if evse_id else None,
+            )
+        )
+        LOGGER.info("Transaction Event %s acknowledged for %s", event_type, self.id)
 
 
 async def run_session(
