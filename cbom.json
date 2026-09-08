@@ -1,0 +1,157 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "serialNumber": "urn:uuid:3bc33efe-c5f7-4f28-83e1-67c0336b1455",
+  "metadata": {
+    "timestamp": "2026-09-08T05:32:50.616007+00:00",
+    "component": {
+      "type": "device",
+      "name": "CSMS",
+      "description": "TLS discovery of 127.0.0.1:9001"
+    }
+  },
+  "components": [
+    {
+      "bom-ref": "cert-o=project25,cn=csms.project25.local",
+      "type": "cryptographic-asset",
+      "name": "O=Project25,CN=csms.project25.local",
+      "cryptoProperties": {
+        "assetType": "certificate",
+        "certificateProperties": {
+          "subjectName": "O=Project25,CN=csms.project25.local",
+          "issuerName": "O=Project25,CN=Project25 Test CA",
+          "notValidBefore": "2026-09-07T04:41:59+00:00",
+          "notValidAfter": "2027-09-07T04:41:59+00:00",
+          "certificateFormat": "X.509",
+          "signatureAlgorithm": "ECDSA-secp256r1"
+        }
+      }
+    },
+    {
+      "bom-ref": "algo-ecdsa-secp256r1",
+      "type": "cryptographic-asset",
+      "name": "ECDSA",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "signature",
+          "curve": "secp256r1",
+          "classicalSecurityLevel": 128
+        }
+      }
+    },
+    {
+      "bom-ref": "proto-tls-1.3",
+      "type": "cryptographic-asset",
+      "name": "TLS 1.3",
+      "cryptoProperties": {
+        "assetType": "protocol",
+        "protocolProperties": {
+          "type": "tls",
+          "version": "1.3",
+          "cipherSuites": [
+            {
+              "name": "TLS_CHACHA20_POLY1305_SHA256"
+            },
+            {
+              "name": "TLS_AES_256_GCM_SHA384"
+            },
+            {
+              "name": "TLS_AES_128_GCM_SHA256"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "bom-ref": "proto-tls-1.2",
+      "type": "cryptographic-asset",
+      "name": "TLS 1.2",
+      "cryptoProperties": {
+        "assetType": "protocol",
+        "protocolProperties": {
+          "type": "tls",
+          "version": "1.2",
+          "cipherSuites": [
+            {
+              "name": "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256"
+            },
+            {
+              "name": "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
+            },
+            {
+              "name": "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384"
+            },
+            {
+              "name": "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"
+            },
+            {
+              "name": "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "bom-ref": "algo-x25519",
+      "type": "cryptographic-asset",
+      "name": "X25519",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "key-agree",
+          "curve": "X25519"
+        }
+      }
+    },
+    {
+      "bom-ref": "algo-x448",
+      "type": "cryptographic-asset",
+      "name": "X448",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "key-agree",
+          "curve": "X448"
+        }
+      }
+    },
+    {
+      "bom-ref": "algo-secp256r1",
+      "type": "cryptographic-asset",
+      "name": "secp256r1",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "key-agree",
+          "curve": "secp256r1"
+        }
+      }
+    },
+    {
+      "bom-ref": "algo-secp384r1",
+      "type": "cryptographic-asset",
+      "name": "secp384r1",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "key-agree",
+          "curve": "secp384r1"
+        }
+      }
+    },
+    {
+      "bom-ref": "algo-secp521r1",
+      "type": "cryptographic-asset",
+      "name": "secp521r1",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "key-agree",
+          "curve": "secp521r1"
+        }
+      }
+    }
+  ]
+}
