@@ -14,8 +14,12 @@ import shlex
 import signal
 import sys
 import time
+from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
 import paramiko
+from setup.generate_cbom import build_cbom
+from setup.scan_tls import collect, CERTS_DIR
 
 REPO_DIR = "/home/admin/dongle-warrior-bakery"
 CSMS_HOST = "10.42.0.69"
@@ -91,6 +95,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rp5-host", default=CSMS_HOST, help="CSMS IP")
     parser.add_argument("--rp6-host", default=DISCOVERY_HOST, help="Discovery node IP")
     parser.add_argument("--csms-port", type=int, default=CSMS_PORT)
+    parser.add_argument("--certfile", type=Path, default=CERTS_DIR / "charger1.crt")
+    parser.add_argument("--keyfile", type=Path, default=CERTS_DIR / "charger1.key")
+    parser.add_argument("--out", type=Path, default=Path("cbom.json"))
     return parser.parse_args()
 
 
@@ -140,6 +147,17 @@ def main() -> None:
     )
     exit_code = run_and_stream(rp6, scan_command, "rp6-scan")
     print(f"\n[rp6] scan completed with exit code {exit_code}")
+
+    if exit_code == 0:
+        print(f"\nGenerating CBOM from {args.rp5_host}:{args.csms_port}...")
+        try:
+            data = collect(args.rp5_host, args.csms_port, args.certfile, args.keyfile)
+            cbom = build_cbom(data, "CSMS")
+            import json
+            args.out.write_text(json.dumps(cbom, indent=2))
+            print(f"CBOM written to {args.out} ({len(cbom['components'])} assets)")
+        except Exception as e:
+            print(f"CBOM generation failed: {e}", file=sys.stderr)
 
     stop_all()
 
